@@ -15,6 +15,11 @@
 #include "userprog/process.h"
 #endif
 
+/* To prevent an infinite cycle of getting a thread's priority, a maximum 
+   depth for finding donation is required. */
+#define MAX_DONATION_DEPTH 8;
+static uint8_t current_depth;
+
 /* Random value for struct thread's `magic' member.
    Used to detect stack overflow.  See the big comment at the top
    of thread.h for details. */
