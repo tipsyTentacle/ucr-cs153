@@ -17,6 +17,9 @@
 #error TIMER_FREQ <= 1000 recommended
 #endif
 
+/* List of processes to be awaken after a certain interval */
+static struct list timer_block_list;
+
 /* Number of timer ticks since OS booted. */
 static int64_t ticks;
 
@@ -30,6 +33,39 @@ static void busy_wait (int64_t loops);
 static void real_time_sleep (int64_t num, int32_t denom);
 static void real_time_delay (int64_t num, int32_t denom);
 
+/* Creates a thread_timer object, which is used to keep track of ticks
+   that a thread needs before it wakes up. */
+struct thread_timer 
+create_timer (struct thread* i_thread, int64_t ticks)
+{
+  struct thread_timer *new_timer = malloc (sizeof (struct thread_timer));
+  ASSERT (new_timer != NULL);
+  
+  new_timer->sleeping_thread = i_thread;
+  new_timer->ticks = ticks;
+  new_timer->start = timer_ticks ();
+  return new_timer;
+}
+
+/* Destroy a thread timer. The thread will not be touched. */
+void 
+destroy_thread_timer (struct thread_timer* timer)
+{
+  ASSERT (timer != NULL);
+  free (timer);
+}
+
+/* Checks to see if there any threads to wake up */
+void 
+check_sleeping_threads (void)
+{
+  while (timer_elapsed (list_front (&timer_block_list) -> start) >= 
+      list_front (&timer_block_list) -> ticks)
+  {
+    thread_unblock (list_pop_front (&timer_block_list) -> sleeping_thread);
+  }
+}
+
 /* Sets up the timer to interrupt TIMER_FREQ times per second,
    and registers the corresponding interrupt. */
 void
@@ -37,6 +73,7 @@ timer_init (void)
 {
   pit_configure_channel (0, 2, TIMER_FREQ);
   intr_register_ext (0x20, timer_interrupt, "8254 Timer");
+  list_init (&timer_block_list);
 }
 
 /* Calibrates loops_per_tick, used to implement brief delays. */
@@ -92,8 +129,31 @@ timer_sleep (int64_t ticks)
   int64_t start = timer_ticks ();
 
   ASSERT (intr_get_level () == INTR_ON);
+  struct thread_timer *new_timer = create_timer (thread_current (), ticks);
+  if (list_empty (&timer_block_list)
+    list_push_front (&timer_block_list, new_timer);
+  else
+  {
+    bool inserted = 0x00;
+    for (i = list_begin(&timer_block_list); i != list_end(&timer_block_list) && inserted == 0x00;
+	 i = list_next(&timer_block_list))
+	 {
+	   struct thread_timer *tt = list_entry (i, struct thread_timer, elem);
+	   timer_elapsed (tt->start);
+	   if (new_timer->ticks < (tt->ticks - tt->start))
+	   {
+	     list_insert (tt, new_timer);
+	     inserted = 0x01;
+	   }
+	 }
+    if (inserted == 0x00)
+      list_push_back (&timer_block_list, new_timer);
+  }
+  thread_block ();
+  /*
   while (timer_elapsed (start) < ticks) 
     thread_yield ();
+  */
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -171,6 +231,7 @@ static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
+  check_sleeping_threads ();
   thread_tick ();
 }
 
