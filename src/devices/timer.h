@@ -11,7 +11,7 @@
 struct thread_timer
   {
     /* Pointer to the sleeping thread */
-    thread* sleeping_thread;
+    thread *sleeping_thread;
     /* How long the thread is supposed to sleep */
     int64_t ticks;
     /* When the timer was started */
