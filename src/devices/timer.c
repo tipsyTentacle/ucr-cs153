@@ -37,7 +37,7 @@ static void real_time_delay (int64_t num, int32_t denom);
 /* Creates a thread_timer object, which is used to keep track of ticks
    that a thread needs before it wakes up. */
 struct thread_timer 
-create_timer (struct thread* i_thread, int64_t ticks)
+*create_timer (struct thread* i_thread, int64_t ticks)
 {
   struct thread_timer *new_timer = malloc (sizeof (struct thread_timer));
   ASSERT (new_timer != NULL);
@@ -60,10 +60,10 @@ destroy_thread_timer (struct thread_timer* timer)
 void 
 check_sleeping_threads (void)
 {
-  while (timer_elapsed (list_front (&timer_block_list) -> start) >= 
-      list_front (&timer_block_list) -> ticks)
+  while (timer_elapsed (list_entry (list_front (&timer_block_list), struct thread_timer, elem) -> start) >= 
+      list_entry (list_front (&timer_block_list), struct thread_timer, elem) -> ticks)
   {
-    thread_unblock (list_pop_front (&timer_block_list) -> sleeping_thread);
+    thread_unblock (list_entry (list_front (&timer_block_list), struct thread_timer, elem) -> sleeping_thread);
   }
 }
 
@@ -131,24 +131,25 @@ timer_sleep (int64_t ticks)
 
   ASSERT (intr_get_level () == INTR_ON);
   struct thread_timer *new_timer = create_timer (thread_current (), ticks);
-  if (list_empty (&timer_block_list)
-    list_push_front (&timer_block_list, new_timer);
+  if (list_empty (&timer_block_list))
+    list_push_front (&timer_block_list, &new_timer->elem);
   else
   {
     bool inserted = 0x00;
-    for (i = list_begin(&timer_block_list); i != list_end(&timer_block_list) && inserted == 0x00;
-	 i = list_next(&timer_block_list))
+    struct list_elem *i = list_begin(&timer_block_list);
+    for (; i != list_end(&timer_block_list) && inserted == 0x00;
+	 i = list_next(i))
 	 {
 	   struct thread_timer *tt = list_entry (i, struct thread_timer, elem);
 	   timer_elapsed (tt->start);
 	   if (new_timer->ticks < (tt->ticks - tt->start))
 	   {
-	     list_insert (tt, new_timer);
+	     list_insert (&tt->elem, &new_timer->elem);
 	     inserted = 0x01;
 	   }
 	 }
     if (inserted == 0x00)
-      list_push_back (&timer_block_list, new_timer);
+      list_push_back (&timer_block_list, &new_timer->elem);
   }
   thread_block ();
   /*

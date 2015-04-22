@@ -20,7 +20,7 @@ struct thread_timer
     struct list_elem elem;              /* List element. */
   };
   
-struct thread_timer create_timer (struct thread* i_thread, int64_t ticks);
+struct thread_timer *create_timer (struct thread* i_thread, int64_t ticks);
 void destroy_thread_timer (struct thread_timer* timer);
 
 void check_sleeping_threads (void);
