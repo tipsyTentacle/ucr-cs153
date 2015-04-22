@@ -60,6 +60,8 @@ destroy_thread_timer (struct thread_timer* timer)
 void 
 check_sleeping_threads (void)
 {
+  if (list_empty(&timer_block_list))
+    return;
   while (timer_elapsed (list_entry (list_front (&timer_block_list), struct thread_timer, elem) -> start) >= 
       list_entry (list_front (&timer_block_list), struct thread_timer, elem) -> ticks)
   {
