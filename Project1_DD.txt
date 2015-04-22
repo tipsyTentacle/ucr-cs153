@@ -9,7 +9,7 @@
 >> Fill in the names and email addresses of your group members.
 
 Viet Nguyen <vnguy057@ucr.edu> <861045871>
-FirstName LastName <email@domain.example> <SID>
+Craig Collier  <ccoll010@ucr.edu> <861100234>
 
 ---- PRELIMINARIES ----
 
