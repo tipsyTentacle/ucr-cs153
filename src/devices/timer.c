@@ -23,6 +23,7 @@ static struct list timer_block_list;
 
 /* Number of timer ticks since OS booted. */
 static int64_t ticks;
+struct lock  timer_list_lock;
 
 /* Number of loops per timer tick.
    Initialized by timer_calibrate(). */
@@ -62,10 +63,11 @@ check_sleeping_threads (void)
 {
   if (list_empty(&timer_block_list))
     return;
-  while (timer_elapsed (list_entry (list_front (&timer_block_list), struct thread_timer, elem) -> start) >= 
-      list_entry (list_front (&timer_block_list), struct thread_timer, elem) -> ticks)
+  while (!list_empty (&timer_block_list) &&
+	 timer_elapsed (list_entry (list_front (&timer_block_list), struct thread_timer, elem) -> start) >= 
+	 list_entry (list_front (&timer_block_list), struct thread_timer, elem) -> ticks)
   {
-    thread_unblock (list_entry (list_front (&timer_block_list), struct thread_timer, elem) -> sleeping_thread);
+    thread_unblock (list_entry (list_pop_front (&timer_block_list), struct thread_timer, elem) -> sleeping_thread);
   }
 }
 
@@ -77,6 +79,7 @@ timer_init (void)
   pit_configure_channel (0, 2, TIMER_FREQ);
   intr_register_ext (0x20, timer_interrupt, "8254 Timer");
   list_init (&timer_block_list);
+  lock_init (&timer_list_lock);
 }
 
 /* Calibrates loops_per_tick, used to implement brief delays. */
@@ -132,6 +135,7 @@ timer_sleep (int64_t ticks)
   int64_t start = timer_ticks ();
 
   ASSERT (intr_get_level () == INTR_ON);
+  lock_acquire(&timer_list_lock);
   struct thread_timer *new_timer = create_timer (thread_current (), ticks);
   if (list_empty (&timer_block_list))
     list_push_front (&timer_block_list, &new_timer->elem);
@@ -151,9 +155,12 @@ timer_sleep (int64_t ticks)
 	   }
 	 }
     if (inserted == 0x00)
-      list_push_back (&timer_block_list, &new_timer->elem);
+      list_push_back (&timer_block_list, &new_timer->elem);    
   }
+  lock_release (&timer_list_lock);
+  intr_disable();
   thread_block ();
+  intr_enable();
   /*
   while (timer_elapsed (start) < ticks) 
     thread_yield ();
