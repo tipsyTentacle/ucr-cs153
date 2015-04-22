@@ -63,6 +63,8 @@ check_sleeping_threads (void)
 {
   if (list_empty(&timer_block_list))
     return;
+  //printf("time elapsed: %lld \n", timer_elapsed (list_entry (list_front (&timer_block_list), struct thread_timer, elem) -> start));
+  //printf("num of ticks to wait: %lld \n", list_entry (list_front (&timer_block_list), struct thread_timer, elem) -> ticks);
   while (!list_empty (&timer_block_list) &&
 	 timer_elapsed (list_entry (list_front (&timer_block_list), struct thread_timer, elem) -> start) >= 
 	 list_entry (list_front (&timer_block_list), struct thread_timer, elem) -> ticks)
