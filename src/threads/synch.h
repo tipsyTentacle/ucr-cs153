@@ -3,6 +3,7 @@
 
 #include <list.h>
 #include <stdbool.h>
+#include "threads/thread.h"
 
 /* A counting semaphore. */
 struct semaphore 
@@ -16,6 +17,7 @@ void sema_down (struct semaphore *);
 bool sema_try_down (struct semaphore *);
 void sema_up (struct semaphore *);
 void sema_self_test (void);
+void sema_insert_waiter(struct semaphore* sema, struct thread * newElem);
 
 /* Lock. */
 struct lock 

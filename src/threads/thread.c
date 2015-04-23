@@ -97,6 +97,7 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
+  current_depth = 0;
 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
@@ -356,6 +357,15 @@ int
 thread_get_priority (void) 
 {
   return thread_current ()->priority;
+}
+
+/* compare the priority of the two threads and return lhs if lhs's priority is larger */
+bool compare_thread_priority (const struct list_elem *lhs, const struct list_elem *rhs, void *aux UNUSED)
+{
+  const struct thread *a = list_entry (lhs, struct thread, elem);
+  const struct thread *b = list_entry (rhs, struct thread, elem);
+  
+  return a->priority < b->priority;
 }
 
 /* Sets the current thread's nice value to NICE. */
