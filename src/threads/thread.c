@@ -17,7 +17,7 @@
 
 /* To prevent an infinite cycle of getting a thread's priority, a maximum 
    depth for finding donation is required. */
-#define MAX_DONATION_DEPTH 8
+#define MAX_DONATION_DEPTH 4
 static uint8_t current_depth;
 
 /* Random value for struct thread's `magic' member.
@@ -261,15 +261,6 @@ thread_unblock (struct thread *t)
   add_thread_to_ready (t);
   t->status = THREAD_READY;
   intr_set_level (old_level);
-  struct list_elem *e;
-    printf("Ready List's content: ");
-      for (e = list_begin (&ready_list); e != list_end (&ready_list);
-           e = list_next (e))
-        {
-          struct thread *f = list_entry (e, struct thread, elem);
-          printf("%d ", f->priority);
-        }
-    printf("\n");
 }
 
 /* Returns the name of the running thread. */
@@ -366,10 +357,10 @@ void
 thread_set_priority (int new_priority) 
 {
   lock_acquire (&thread_set_priority_lock);
-  printf ("Setting the priority level.\n");
   thread_current ()->priority = new_priority;
-  printf ("Priority has been set to: %d\n", thread_current ()->priority);
   lock_release (&thread_set_priority_lock);
+  if (new_priority < (list_entry (list_max(&ready_list, &compare_thread_priority, NULL), struct thread, elem) -> priority))
+    thread_yield();
 }
 
 /* Returns the current thread's priority. */
@@ -377,7 +368,7 @@ int
 thread_get_priority (void) 
 {
   return thread_current () -> priority;
-  return thread_get_d_priority (thread_current ());
+  //return thread_get_d_priority (thread_current ());
 }
 
 int 
@@ -385,6 +376,7 @@ thread_get_d_priority (struct thread *iThread)
 {
   current_depth++;
   int priority = iThread->priority;
+  return priority;
   if (current_depth <= MAX_DONATION_DEPTH && !list_empty(&iThread->synch_list))
   {
     struct list_elem *e;
@@ -408,7 +400,7 @@ bool compare_thread_priority (const struct list_elem *lhs, const struct list_ele
   const struct thread *a = list_entry (lhs, struct thread, elem);
   const struct thread *b = list_entry (rhs, struct thread, elem);
   
-  if (a->priority < b->priority)
+  if (thread_get_d_priority (a) < thread_get_d_priority (b))
     return true;
   else
     return false;
