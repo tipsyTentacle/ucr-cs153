@@ -120,8 +120,6 @@ tid_t thread_create (const char *name, int priority, thread_func *, void *);
 
 void thread_block (void);
 void thread_unblock (struct thread *);
-#include "devices/timer.h"
-void thread_t_unblock( struct thread_timer *t);
 
 struct thread *thread_current (void);
 tid_t thread_tid (void);

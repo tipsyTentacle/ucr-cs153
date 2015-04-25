@@ -260,25 +260,6 @@ thread_unblock (struct thread *t)
   intr_set_level (old_level);
 }
 
-void
-thread_t_unblock( struct thread_timer *t)
-{
-  printf("time elapsed: %lld \n", timer_elapsed ( t-> start));
-  printf("num of ticks to wait: %lld \n",  t-> ticks);
-  printf("this is a thread.\n");
-  enum intr_level old_level;
-    
-  struct thread *tt = t->sleeping_thread;
-  
-  ASSERT (is_thread (tt));
-
-  old_level = intr_disable ();
-  ASSERT (tt->status == THREAD_BLOCKED);
-  add_thread_to_ready (tt);
-  tt->status = THREAD_READY;
-  intr_set_level (old_level);
-}
-
 /* Returns the name of the running thread. */
 const char *
 thread_name (void) 

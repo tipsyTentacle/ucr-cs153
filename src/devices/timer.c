@@ -77,8 +77,7 @@ check_sleeping_threads (void)
 	 timer_elapsed (list_entry (list_front (&timer_block_list), struct thread_timer, elem) -> start) >= 
 	 list_entry (list_front (&timer_block_list), struct thread_timer, elem) -> ticks)
   {
-    //thread_unblock ((list_entry (list_pop_front (&timer_block_list), struct thread_timer, elem)) -> sleeping_thread);
-    thread_t_unblock((list_entry (list_pop_front (&timer_block_list), struct thread_timer, elem)));
+    thread_unblock ((list_entry (list_pop_front (&timer_block_list), struct thread_timer, elem)) -> sleeping_thread);
   }
 }
 
