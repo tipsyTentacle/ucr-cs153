@@ -49,6 +49,18 @@ struct thread_timer
   return new_timer;
 }
 
+bool 
+compare_timer_ticks (const struct list_elem *lhs, const struct list_elem *rhs, void *aux UNUSED)
+{
+  const struct thread_timer *a = list_entry (lhs, struct thread_timer, elem);
+  const struct thread_timer *b = list_entry (rhs, struct thread_timer, elem);
+  
+  if ( (a->ticks - timer_elapsed(a->start)) < (b->ticks - timer_elapsed(b->start)))
+    return true;
+  else
+    return false;
+}
+
 /* Destroy a thread timer. The thread will not be touched. */
 void 
 destroy_thread_timer (struct thread_timer* timer)
@@ -61,15 +73,12 @@ destroy_thread_timer (struct thread_timer* timer)
 void 
 check_sleeping_threads (void)
 {
-  if (list_empty(&timer_block_list))
-    return;
-  //printf("time elapsed: %lld \n", timer_elapsed (list_entry (list_front (&timer_block_list), struct thread_timer, elem) -> start));
-  //printf("num of ticks to wait: %lld \n", list_entry (list_front (&timer_block_list), struct thread_timer, elem) -> ticks);
   while (!list_empty (&timer_block_list) &&
 	 timer_elapsed (list_entry (list_front (&timer_block_list), struct thread_timer, elem) -> start) >= 
 	 list_entry (list_front (&timer_block_list), struct thread_timer, elem) -> ticks)
   {
-    thread_unblock (list_entry (list_pop_front (&timer_block_list), struct thread_timer, elem) -> sleeping_thread);
+    //thread_unblock ((list_entry (list_pop_front (&timer_block_list), struct thread_timer, elem)) -> sleeping_thread);
+    thread_t_unblock((list_entry (list_pop_front (&timer_block_list), struct thread_timer, elem)));
   }
 }
 
@@ -137,32 +146,21 @@ timer_sleep (int64_t ticks)
   int64_t start = timer_ticks ();
 
   ASSERT (intr_get_level () == INTR_ON);
-  lock_acquire(&timer_list_lock);
+  enum intr_level old_level = intr_disable();
+  //lock_acquire(&timer_list_lock);
   struct thread_timer *new_timer = create_timer (thread_current (), ticks);
   if (list_empty (&timer_block_list))
     list_push_front (&timer_block_list, &new_timer->elem);
   else
   {
-    bool inserted = 0x00;
-    struct list_elem *i = list_begin(&timer_block_list);
-    for (; i != list_end(&timer_block_list) && inserted == 0x00;
-	 i = list_next(i))
-	 {
-	   struct thread_timer *tt = list_entry (i, struct thread_timer, elem);
-	   timer_elapsed (tt->start);
-	   if (new_timer->ticks < (tt->ticks - tt->start))
-	   {
-	     list_insert (&tt->elem, &new_timer->elem);
-	     inserted = 0x01;
-	   }
-	 }
-    if (inserted == 0x00)
-      list_push_back (&timer_block_list, &new_timer->elem);    
+    list_insert_ordered (&timer_block_list, &new_timer->elem, 
+			 &compare_timer_ticks, NULL); 
   }
-  lock_release (&timer_list_lock);
-  intr_disable();
+  //lock_release (&timer_list_lock);
+  //intr_disable();
   thread_block ();
-  intr_enable();
+  intr_set_level (old_level);
+  //intr_enable();
   /*
   while (timer_elapsed (start) < ticks) 
     thread_yield ();

@@ -93,6 +93,7 @@ struct thread
     
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
+    struct list_elem readyElem;		/* ready list element */
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
@@ -119,6 +120,8 @@ tid_t thread_create (const char *name, int priority, thread_func *, void *);
 
 void thread_block (void);
 void thread_unblock (struct thread *);
+#include "devices/timer.h"
+void thread_t_unblock( struct thread_timer *t);
 
 struct thread *thread_current (void);
 tid_t thread_tid (void);
@@ -132,12 +135,16 @@ typedef void thread_action_func (struct thread *t, void *aux);
 void thread_foreach (thread_action_func *, void *);
 
 int thread_get_priority (void);
+int thread_get_d_priority (struct thread *iThread);
 void thread_set_priority (int);
 bool compare_thread_priority (const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED);
+bool compare_thread_r_priority (const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED);
 
 int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
+
+void add_thread_to_ready (struct thread *iThread);
 
 #endif /* threads/thread.h */
