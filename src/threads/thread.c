@@ -219,6 +219,9 @@ thread_create (const char *name, int priority,
   /* Add to run queue. */
   thread_unblock (t);
 
+  if (thread_current () -> priority < t->priority)
+    thread_yield ();
+  
   return tid;
 }
 
@@ -258,6 +261,15 @@ thread_unblock (struct thread *t)
   add_thread_to_ready (t);
   t->status = THREAD_READY;
   intr_set_level (old_level);
+  struct list_elem *e;
+    printf("Ready List's content: ");
+      for (e = list_begin (&ready_list); e != list_end (&ready_list);
+           e = list_next (e))
+        {
+          struct thread *f = list_entry (e, struct thread, elem);
+          printf("%d ", f->priority);
+        }
+    printf("\n");
 }
 
 /* Returns the name of the running thread. */
@@ -354,7 +366,9 @@ void
 thread_set_priority (int new_priority) 
 {
   lock_acquire (&thread_set_priority_lock);
+  printf ("Setting the priority level.\n");
   thread_current ()->priority = new_priority;
+  printf ("Priority has been set to: %d\n", thread_current ()->priority);
   lock_release (&thread_set_priority_lock);
 }
 
@@ -362,7 +376,7 @@ thread_set_priority (int new_priority)
 int
 thread_get_priority (void) 
 {
-  //return thread_current () -> priority;
+  return thread_current () -> priority;
   return thread_get_d_priority (thread_current ());
 }
 
@@ -378,7 +392,7 @@ thread_get_d_priority (struct thread *iThread)
 	 e != list_end (&iThread->synch_list);
 	 e = list_next(e))
        {
-	 struct thread *dThread = list_entry (e, struct thread, readyElem);
+	 struct thread *dThread = list_entry (e, struct thread, elem);
 	 priority += thread_get_d_priority(dThread);
        }
   }
@@ -402,11 +416,11 @@ bool compare_thread_priority (const struct list_elem *lhs, const struct list_ele
 
 bool compare_thread_r_priority (const struct list_elem *lhs, const struct list_elem *rhs, void *aux UNUSED)
 {
-  const struct thread *a = list_entry (lhs, struct thread, readyElem);
-  const struct thread *b = list_entry (rhs, struct thread, readyElem);
+  const struct thread *a = list_entry (lhs, struct thread, elem);
+  const struct thread *b = list_entry (rhs, struct thread, elem);
   
-//   if (thread_get_d_priority (a) < thread_get_d_priority (b))
-  if (a->priority < b->priority)
+  if (thread_get_d_priority (a) < thread_get_d_priority (b))
+//  if (a->priority < b->priority)
     return true;
   else
     return false;
@@ -556,8 +570,9 @@ next_thread_to_run (void)
     return idle_thread;
   else {
     //enum intr_level old_level = intr_disable();
-    struct thread *max_priority_thread = list_entry ( list_max (&ready_list, &compare_thread_priority, NULL), struct thread, readyElem);
-    list_remove (&max_priority_thread->readyElem);
+    struct thread *max_priority_thread = list_entry ( list_max (&ready_list, &compare_thread_priority, NULL), struct thread, elem);
+    list_remove (&max_priority_thread->elem);
+    //struct thread *max_priority_thread = list_entry (list_pop_back(&ready_list), struct thread, readyElem);
     //intr_set_level (old_level);
     return max_priority_thread;
     }
@@ -654,6 +669,7 @@ uint32_t thread_stack_ofs = offsetof (struct thread, stack);
 void 
 add_thread_to_ready (struct thread *iThread)
 {
-  list_insert_ordered (&ready_list, &iThread->readyElem, &compare_thread_priority, NULL);
-  //list_push_back (&ready_list, &iThread->readyElem);
+  //list_sort (&ready_list, &compare_thread_priority, NULL);
+  //list_insert_ordered (&ready_list, &iThread->readyElem, &compare_thread_priority, NULL);
+  list_push_back (&ready_list, &iThread->elem);
 }
