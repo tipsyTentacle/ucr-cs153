@@ -17,7 +17,7 @@
 
 /* To prevent an infinite cycle of getting a thread's priority, a maximum 
    depth for finding donation is required. */
-#define MAX_DONATION_DEPTH 4
+#define MAX_DONATION_DEPTH 16
 static uint8_t current_depth;
 
 /* Random value for struct thread's `magic' member.
@@ -44,6 +44,9 @@ static struct lock tid_lock;
 
 /* Lock used by thread_set_priority (). */
 static struct lock thread_set_priority_lock;
+
+/* Lock used by thread_get_priority (). */
+static struct lock lock_get_priority;
 
 /* Stack frame for kernel_thread(). */
 struct kernel_thread_frame 
@@ -99,6 +102,8 @@ thread_init (void)
 
   lock_init (&tid_lock);
   lock_init (&thread_set_priority_lock);
+  lock_init (&lock_get_priority);
+  
   list_init (&ready_list);
   list_init (&all_list);
   current_depth = 0;
@@ -215,12 +220,11 @@ thread_create (const char *name, int priority,
   sf->ebp = 0;
 
   intr_set_level (old_level);
-
+  
   /* Add to run queue. */
   thread_unblock (t);
 
-  if (thread_current () -> priority < t->priority)
-    thread_yield ();
+  thread_yield_priority ();
   
   return tid;
 }
@@ -335,6 +339,34 @@ thread_yield (void)
   intr_set_level (old_level);
 }
 
+/* Check to see if there is a higher priority ready thread to yield to */
+void 
+thread_yield_priority(void)
+{
+  //Disable Interrupts
+  enum intr_level old_level = intr_disable();
+
+  if ( !list_empty (&ready_list) ) 
+    {
+      struct thread * cur_thd = thread_current ();
+      struct thread * max_rdy_thd = list_entry (list_max (&ready_list, &compare_thread_priority, NULL), struct thread, elem);
+      if ( thread_get_d_priority(max_rdy_thd) > thread_get_d_priority(cur_thd) )
+        {
+          if ( intr_context () )
+          {
+            intr_yield_on_return ();
+          }
+          else
+          {
+            thread_yield ();
+          } 
+        }
+    }
+
+  //Reenable Interrupts
+  intr_set_level (old_level);
+}
+
 /* Invoke function 'func' on all threads, passing along 'aux'.
    This function must be called with interrupts off. */
 void
@@ -359,16 +391,17 @@ thread_set_priority (int new_priority)
   lock_acquire (&thread_set_priority_lock);
   thread_current ()->priority = new_priority;
   lock_release (&thread_set_priority_lock);
-  if (new_priority < (list_entry (list_max(&ready_list, &compare_thread_priority, NULL), struct thread, elem) -> priority))
-    thread_yield();
+  thread_yield_priority ();
 }
 
 /* Returns the current thread's priority. */
 int
 thread_get_priority (void) 
 {
-  return thread_current () -> priority;
-  //return thread_get_d_priority (thread_current ());
+  lock_acquire(&lock_get_priority);
+  int priority = thread_get_d_priority (thread_current ());
+  lock_release(&lock_get_priority);
+  return priority;
 }
 
 int 
@@ -376,17 +409,34 @@ thread_get_d_priority (struct thread *iThread)
 {
   current_depth++;
   int priority = iThread->priority;
-  return priority;
-  if (current_depth <= MAX_DONATION_DEPTH && !list_empty(&iThread->synch_list))
+  if (current_depth <= MAX_DONATION_DEPTH)
   {
-    struct list_elem *e;
-    for (e = list_begin (&iThread->synch_list);
-	 e != list_end (&iThread->synch_list);
-	 e = list_next(e))
-       {
-	 struct thread *dThread = list_entry (e, struct thread, elem);
-	 priority += thread_get_d_priority(dThread);
-       }
+    if (!(list_empty (&iThread->sema_list)))
+    {
+//       struct list_elem *e;
+//       for (e = list_begin (&iThread->sema_list);
+// 	   e != list_end (&iThread->sema_list);
+// 	   e = list_next(e))
+// 	   {
+// // 	     struct semaphore *dSema = list_entry (e, struct semaphore, elem);
+// // 	     int dSema_max_priority = sema_get_waiters_max_priorities (dSema);
+// // 	     if (dSema_max_priority > priority)
+// // 	       priority = dSema_max_priority;
+// 	   }
+    }
+    if (!(list_empty (&iThread->lock_list)))
+    {
+      struct list_elem *e;
+      for (e = list_begin (&iThread->lock_list);
+	   e != list_end (&iThread->lock_list);
+	   e = list_next(e))
+	   {
+	     struct lock *dLock = list_entry (e, struct lock, elem);
+	     int dLock_max_priority = sema_get_waiters_max_priorities (&dLock->semaphore);
+	     if (dLock_max_priority > priority)
+	       priority = dLock_max_priority;
+	   }
+    }
   }
   current_depth--;
   if (priority > PRI_MAX)
@@ -534,6 +584,8 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
+  list_init (&t->sema_list);
+  list_init (&t->lock_list);
   list_push_back (&all_list, &t->allelem);
 }
 
