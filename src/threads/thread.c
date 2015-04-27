@@ -411,19 +411,6 @@ thread_get_d_priority (struct thread *iThread)
   int priority = iThread->priority;
   if (current_depth <= MAX_DONATION_DEPTH)
   {
-    if (!(list_empty (&iThread->sema_list)))
-    {
-//       struct list_elem *e;
-//       for (e = list_begin (&iThread->sema_list);
-// 	   e != list_end (&iThread->sema_list);
-// 	   e = list_next(e))
-// 	   {
-// // 	     struct semaphore *dSema = list_entry (e, struct semaphore, elem);
-// // 	     int dSema_max_priority = sema_get_waiters_max_priorities (dSema);
-// // 	     if (dSema_max_priority > priority)
-// // 	       priority = dSema_max_priority;
-// 	   }
-    }
     if (!(list_empty (&iThread->lock_list)))
     {
       struct list_elem *e;
@@ -451,18 +438,6 @@ bool compare_thread_priority (const struct list_elem *lhs, const struct list_ele
   const struct thread *b = list_entry (rhs, struct thread, elem);
   
   if (thread_get_d_priority (a) < thread_get_d_priority (b))
-    return true;
-  else
-    return false;
-}
-
-bool compare_thread_r_priority (const struct list_elem *lhs, const struct list_elem *rhs, void *aux UNUSED)
-{
-  const struct thread *a = list_entry (lhs, struct thread, elem);
-  const struct thread *b = list_entry (rhs, struct thread, elem);
-  
-  if (thread_get_d_priority (a) < thread_get_d_priority (b))
-//  if (a->priority < b->priority)
     return true;
   else
     return false;

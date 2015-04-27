@@ -138,7 +138,6 @@ int thread_get_priority (void);
 int thread_get_d_priority (struct thread *iThread);
 void thread_set_priority (int);
 bool compare_thread_priority (const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED);
-bool compare_thread_r_priority (const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED);
 
 int thread_get_nice (void);
 void thread_set_nice (int);
