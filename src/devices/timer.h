@@ -24,6 +24,7 @@ struct thread_timer *create_timer (struct thread* i_thread, int64_t ticks);
 bool compare_timer_ticks (const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED);
 void destroy_thread_timer (struct thread_timer* timer);
 
+bool thread_sleeptime_up(void);
 void check_sleeping_threads (void);
 
 void timer_init (void);

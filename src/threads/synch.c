@@ -71,7 +71,6 @@ sema_down (struct semaphore *sema)
       sema_insert_waiter (sema, thread_current());
       thread_block ();
     }
-  //list_push_back ( &thread_current ()->sema_list, &sema->elem);
   sema->value--;
   intr_set_level (old_level);
 }
@@ -94,7 +93,6 @@ sema_try_down (struct semaphore *sema)
     {
       sema->value--;
       success = true; 
-      //list_push_back ( &(thread_current () -> sema_list), &sema->elem);
     }
   else
     success = false;
@@ -115,7 +113,7 @@ sema_up (struct semaphore *sema)
   ASSERT (sema != NULL);
 
   old_level = intr_disable ();
-  //list_remove (&sema->elem);
+
   struct list_elem *next = NULL;
   if (!list_empty (&sema->waiters)) 
   {

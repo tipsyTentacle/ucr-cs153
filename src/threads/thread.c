@@ -411,7 +411,7 @@ thread_get_d_priority (struct thread *iThread)
   int priority = iThread->priority;
   if (current_depth <= MAX_DONATION_DEPTH)
   {
-    if (!(list_empty (&iThread->lock_list)))
+    if (!list_empty (&iThread->lock_list))
     {
       struct list_elem *e;
       for (e = list_begin (&iThread->lock_list);
@@ -588,11 +588,8 @@ next_thread_to_run (void)
   if (list_empty (&ready_list))
     return idle_thread;
   else {
-    //enum intr_level old_level = intr_disable();
     struct thread *max_priority_thread = list_entry ( list_max (&ready_list, &compare_thread_priority, NULL), struct thread, elem);
     list_remove (&max_priority_thread->elem);
-    //struct thread *max_priority_thread = list_entry (list_pop_back(&ready_list), struct thread, readyElem);
-    //intr_set_level (old_level);
     return max_priority_thread;
     }
 }
@@ -688,7 +685,5 @@ uint32_t thread_stack_ofs = offsetof (struct thread, stack);
 void 
 add_thread_to_ready (struct thread *iThread)
 {
-  //list_sort (&ready_list, &compare_thread_priority, NULL);
-  //list_insert_ordered (&ready_list, &iThread->readyElem, &compare_thread_priority, NULL);
   list_push_back (&ready_list, &iThread->elem);
 }

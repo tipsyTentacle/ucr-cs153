@@ -1,13 +1,13 @@
-#include "devices/timer.h"
+#include <stdlib.h>
 #include <debug.h>
 #include <inttypes.h>
 #include <round.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include "devices/pit.h"
 #include "threads/interrupt.h"
 #include "threads/synch.h"
 #include "threads/thread.h"
+#include "devices/timer.h"
   
 /* See [8254] for hardware details of the 8254 timer chip. */
 
@@ -69,13 +69,20 @@ destroy_thread_timer (struct thread_timer* timer)
   free (timer);
 }
 
+/* checks (current tick - thread's tick upon creation) > (amt of ticks to run)
+   returns false if threadlist empty  */
+bool
+thread_sleeptime_up(void)
+{
+  return !list_empty (&timer_block_list) &&
+            timer_elapsed (list_entry (list_front (&timer_block_list), struct thread_timer, elem) -> start) >= 
+            list_entry (list_front (&timer_block_list), struct thread_timer, elem) -> ticks;
+}
 /* Checks to see if there any threads to wake up */
 void 
 check_sleeping_threads (void)
 {
-  while (!list_empty (&timer_block_list) &&
-	 timer_elapsed (list_entry (list_front (&timer_block_list), struct thread_timer, elem) -> start) >= 
-	 list_entry (list_front (&timer_block_list), struct thread_timer, elem) -> ticks)
+  while (thread_sleeptime_up())
   {
     thread_unblock ((list_entry (list_pop_front (&timer_block_list), struct thread_timer, elem)) -> sleeping_thread);
   }
@@ -143,27 +150,19 @@ void
 timer_sleep (int64_t ticks) 
 {
   int64_t start = timer_ticks ();
-
   ASSERT (intr_get_level () == INTR_ON);
   enum intr_level old_level = intr_disable();
-  //lock_acquire(&timer_list_lock);
   struct thread_timer *new_timer = create_timer (thread_current (), ticks);
+
   if (list_empty (&timer_block_list))
-    list_push_front (&timer_block_list, &new_timer->elem);
+     list_push_front (&timer_block_list, &new_timer->elem);
   else
   {
-    list_insert_ordered (&timer_block_list, &new_timer->elem, 
+     list_insert_ordered (&timer_block_list, &new_timer->elem, 
 			 &compare_timer_ticks, NULL); 
   }
-  //lock_release (&timer_list_lock);
-  //intr_disable();
   thread_block ();
   intr_set_level (old_level);
-  //intr_enable();
-  /*
-  while (timer_elapsed (start) < ticks) 
-    thread_yield ();
-  */
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
