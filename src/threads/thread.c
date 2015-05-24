@@ -48,14 +48,6 @@ static struct lock thread_set_priority_lock;
 /* Lock used by thread_get_priority (). */
 static struct lock lock_get_priority;
 
-/* Stack frame for kernel_thread(). */
-struct kernel_thread_frame 
-  {
-    void *eip;                  /* Return address. */
-    thread_func *function;      /* Function to call. */
-    void *aux;                  /* Auxiliary data for function. */
-  };
-
 /* Statistics. */
 static long long idle_ticks;    /* # of timer ticks spent idle. */
 static long long kernel_ticks;  /* # of timer ticks in kernel threads. */
@@ -223,7 +215,7 @@ thread_create (const char *name, int priority,
   
   /* Add to run queue. */
   thread_unblock (t);
-
+  
   thread_yield_priority ();
   
   return tid;
@@ -405,7 +397,7 @@ thread_get_priority (void)
 }
 
 int 
-thread_get_d_priority (struct thread *iThread)
+thread_get_d_priority (const struct thread *iThread)
 {
   current_depth++;
   int priority = iThread->priority;
@@ -432,7 +424,8 @@ thread_get_d_priority (struct thread *iThread)
 }
 
 /* compare the priority of the two threads and return true if lhs's priority is larger */
-bool compare_thread_priority (const struct list_elem *lhs, const struct list_elem *rhs, void *aux UNUSED)
+bool 
+compare_thread_priority (const struct list_elem *lhs, const struct list_elem *rhs, void *aux UNUSED)
 {
   const struct thread *a = list_entry (lhs, struct thread, elem);
   const struct thread *b = list_entry (rhs, struct thread, elem);
@@ -561,6 +554,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->magic = THREAD_MAGIC;
   list_init (&t->sema_list);
   list_init (&t->lock_list);
+  list_init (&t->child_list);
   list_push_back (&all_list, &t->allelem);
 }
 

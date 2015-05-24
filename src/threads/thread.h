@@ -91,6 +91,7 @@ struct thread
     struct list_elem allelem;           /* List element for all threads list. */
     struct list sema_list;		/* List containing locks held by thread. */ 
     struct list lock_list;		/* List containing locks held by thread. */  
+    struct list child_list;		/* List containing pointers to child threads. */
     
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
@@ -104,7 +105,7 @@ struct thread
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
   };
-
+  
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
@@ -135,7 +136,7 @@ typedef void thread_action_func (struct thread *t, void *aux);
 void thread_foreach (thread_action_func *, void *);
 
 int thread_get_priority (void);
-int thread_get_d_priority (struct thread *iThread);
+int thread_get_d_priority (const struct thread *iThread);
 void thread_set_priority (int);
 bool compare_thread_priority (const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED);
 
@@ -145,5 +146,13 @@ int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
 void add_thread_to_ready (struct thread *iThread);
+
+  /* Stack frame for kernel_thread(). */
+struct kernel_thread_frame 
+  {
+    void *eip;                  /* Return address. */
+    thread_func *function;      /* Function to call. */
+    void *aux;                  /* Auxiliary data for function. */
+  };
 
 #endif /* threads/thread.h */
